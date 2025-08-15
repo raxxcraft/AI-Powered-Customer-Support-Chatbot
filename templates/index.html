@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Customer Support Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e1e1e1;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+        }
+        .header h1 {
+            color: #000000;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            background-color: #ffffff;
+        }
+        .message {
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .user-message {
+            justify-content: flex-end;
+        }
+        .bot-message {
+            justify-content: flex-start;
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 12px;
+        }
+        .user-avatar {
+            background-color: #000000;
+            color: #ffffff;
+        }
+        .bot-avatar {
+            background-color: #f0f0f0;
+            color: #000000;
+        }
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        .user-content {
+            background-color: #f8f8f8;
+            color: #000000;
+            border: 1px solid #e1e1e1;
+        }
+        .bot-content {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #e1e1e1;
+        }
+        .input-container {
+            border-top: 1px solid #e1e1e1;
+            padding: 24px;
+            background-color: #ffffff;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            padding: 12px 16px;
+            background-color: #ffffff;
+        }
+        .input-field {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            color: #000000;
+            background: transparent;
+        }
+        .input-field::placeholder {
+            color: #666666;
+        }
+        .send-button {
+            background: none;
+            border: none;
+            color: #000000;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .send-button:hover {
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        .send-button:disabled {
+            color: #cccccc;
+            cursor: not-allowed;
+        }
+        .typing {
+            font-style: italic;
+            color: #666666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Customer Support Assistant</h1>
+    </div>
+    
+    <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="avatar bot-avatar">AI</div>
+                <div class="message-content bot-content">
+                    Hello! I'm your customer support assistant. How can I help you today?
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <div class="input-wrapper">
+                <input type="text" class="input-field" id="messageInput" placeholder="Ask me anything..." onkeypress="handleKeyPress(event)">
+                <button class="send-button" id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addMessage(message, isUser) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${isUser ? 'user-avatar' : 'bot-avatar'}`;
+            avatar.textContent = isUser ? 'U' : 'AI';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `message-content ${isUser ? 'user-content' : 'bot-content'}`;
+            contentDiv.textContent = message;
+            
+            if (isUser) {
+                messageDiv.appendChild(contentDiv);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addMessage(message, true);
+            input.value = '';
+            sendButton.disabled = true;
+            
+            // Show typing indicator
+            addMessage('Typing...', false);
+            const typingMessage = document.querySelector('.chat-messages').lastChild;
+            typingMessage.querySelector('.bot-content').classList.add('typing');
+            
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                typingMessage.remove();
+                addMessage(data.response, false);
+                sendButton.disabled = false;
+                input.focus();
+            })
+            .catch(error => {
+                typingMessage.remove();
+                addMessage('Sorry, something went wrong. Please try again.', false);
+                sendButton.disabled = false;
+                input.focus();
+            });
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        document.getElementById('messageInput').focus();
+    </script>
+</body>
+</html>
